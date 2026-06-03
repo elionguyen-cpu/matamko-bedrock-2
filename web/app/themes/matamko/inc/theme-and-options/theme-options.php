@@ -79,17 +79,24 @@ function matamko_output_footer_tracking_scripts(): void
 
 function matamko_output_tracking_script(string $field_name): void
 {
-    if (! function_exists('get_field')) {
-        return;
-    }
-
-    $script = (string) get_field($field_name, 'option');
+    $script = (string) matamko_get_theme_setting($field_name);
 
     if ('' === trim($script)) {
         return;
     }
 
     echo $script; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Administrator-managed tracking scripts from ACF Theme Settings.
+}
+
+function matamko_get_theme_setting(string $key, mixed $default = ''): mixed
+{
+    $settings = get_option('matamko_theme_settings', []);
+
+    if (! is_array($settings)) {
+        return $default;
+    }
+
+    return $settings[$key] ?? $default;
 }
 
 add_action('admin_menu', 'matamko_register_theme_builder_menu');
@@ -130,195 +137,181 @@ function matamko_render_theme_builder_page(): void
     <?php
 }
 
-add_action('acf/init', 'matamko_register_theme_settings');
+add_action('admin_init', 'matamko_register_theme_settings');
 function matamko_register_theme_settings(): void
 {
-    if (! function_exists('acf_add_options_page')) {
-        return;
-    }
-
-    acf_add_options_page([
-        'page_title' => esc_html__('Theme Settings', 'matamko'),
-        'menu_title' => esc_html__('Theme Settings', 'matamko'),
-        'menu_slug'  => 'matamko-theme-settings',
-        'capability' => 'edit_theme_options',
-        'redirect'   => false,
-        'position'   => 59,
-        'icon_url'   => 'dashicons-admin-generic',
-    ]);
+    register_setting(
+        'matamko_theme_settings',
+        'matamko_theme_settings',
+        [
+            'type' => 'array',
+            'sanitize_callback' => 'matamko_sanitize_theme_settings',
+            'default' => [],
+        ],
+    );
 }
 
-add_action('acf/include_fields', 'matamko_register_theme_settings_fields');
-function matamko_register_theme_settings_fields(): void
+add_action('admin_menu', 'matamko_register_theme_settings_page');
+function matamko_register_theme_settings_page(): void
 {
-    if (! function_exists('acf_add_local_field_group')) {
-        return;
+    add_menu_page(
+        esc_html__('Theme Settings', 'matamko'),
+        esc_html__('Theme Settings', 'matamko'),
+        'edit_theme_options',
+        'matamko-theme-settings',
+        'matamko_render_theme_settings_page',
+        'dashicons-admin-generic',
+        59,
+    );
+}
+
+function matamko_sanitize_theme_settings(mixed $input): array
+{
+    if (! is_array($input)) {
+        return [];
     }
 
-    acf_add_local_field_group([
-        'key'    => 'group_matamko_theme_settings',
-        'title'  => esc_html__('Theme Settings', 'matamko'),
-        'fields' => [
-            [
-                'key' => 'field_matamko_logo_tab',
-                'label' => esc_html__('Logo', 'matamko'),
-                'name' => '',
-                'type' => 'tab',
-            ],
-            [
-                'key' => 'field_matamko_site_logo',
-                'label' => esc_html__('Logo', 'matamko'),
-                'name' => 'site_logo',
-                'type' => 'image',
-                'return_format' => 'array',
-                'preview_size' => 'medium',
-                'library' => 'all',
-            ],
-            [
-                'key' => 'field_matamko_company_tab',
-                'label' => esc_html__('Company Information', 'matamko'),
-                'name' => '',
-                'type' => 'tab',
-            ],
-            [
-                'key' => 'field_matamko_company_name',
-                'label' => esc_html__('Company Name', 'matamko'),
-                'name' => 'company_name',
-                'type' => 'text',
-            ],
-            [
-                'key' => 'field_matamko_company_address',
-                'label' => esc_html__('Company Address', 'matamko'),
-                'name' => 'company_address',
-                'type' => 'textarea',
-                'rows' => 3,
-            ],
-            [
-                'key' => 'field_matamko_contact_tab',
-                'label' => esc_html__('Contact Information', 'matamko'),
-                'name' => '',
-                'type' => 'tab',
-            ],
-            [
-                'key' => 'field_matamko_contact_phone',
-                'label' => esc_html__('Phone', 'matamko'),
-                'name' => 'contact_phone',
-                'type' => 'text',
-            ],
-            [
-                'key' => 'field_matamko_contact_email',
-                'label' => esc_html__('Email', 'matamko'),
-                'name' => 'contact_email',
-                'type' => 'email',
-            ],
-            [
-                'key' => 'field_matamko_social_tab',
-                'label' => esc_html__('Social Links', 'matamko'),
-                'name' => '',
-                'type' => 'tab',
-            ],
-            [
-                'key' => 'field_matamko_social_links',
-                'label' => esc_html__('Social Links', 'matamko'),
-                'name' => 'social_links',
-                'type' => 'repeater',
-                'layout' => 'table',
-                'button_label' => esc_html__('Add Link', 'matamko'),
-                'sub_fields' => [
-                    [
-                        'key' => 'field_matamko_social_label',
-                        'label' => esc_html__('Label', 'matamko'),
-                        'name' => 'label',
-                        'type' => 'text',
-                    ],
-                    [
-                        'key' => 'field_matamko_social_url',
-                        'label' => esc_html__('URL', 'matamko'),
-                        'name' => 'url',
-                        'type' => 'url',
-                    ],
-                ],
-            ],
-            [
-                'key' => 'field_matamko_tracking_tab',
-                'label' => esc_html__('Tracking Scripts', 'matamko'),
-                'name' => '',
-                'type' => 'tab',
-            ],
-            [
-                'key' => 'field_matamko_tracking_head',
-                'label' => esc_html__('Head Scripts', 'matamko'),
-                'name' => 'tracking_head_scripts',
-                'type' => 'textarea',
-                'rows' => 8,
-            ],
-            [
-                'key' => 'field_matamko_tracking_body',
-                'label' => esc_html__('Body Scripts', 'matamko'),
-                'name' => 'tracking_body_scripts',
-                'type' => 'textarea',
-                'rows' => 8,
-            ],
-            [
-                'key' => 'field_matamko_tracking_footer',
-                'label' => esc_html__('Footer Scripts', 'matamko'),
-                'name' => 'tracking_footer_scripts',
-                'type' => 'textarea',
-                'rows' => 8,
-            ],
-            [
-                'key' => 'field_matamko_header_tab',
-                'label' => esc_html__('Header Settings', 'matamko'),
-                'name' => '',
-                'type' => 'tab',
-            ],
-            [
-                'key' => 'field_matamko_disable_header',
-                'label' => esc_html__('Disable Header', 'matamko'),
-                'name' => 'disable_header',
-                'type' => 'true_false',
-                'ui' => 1,
-            ],
-            [
-                'key' => 'field_matamko_footer_tab',
-                'label' => esc_html__('Footer Settings', 'matamko'),
-                'name' => '',
-                'type' => 'tab',
-            ],
-            [
-                'key' => 'field_matamko_disable_footer',
-                'label' => esc_html__('Disable Footer', 'matamko'),
-                'name' => 'disable_footer',
-                'type' => 'true_false',
-                'ui' => 1,
-            ],
-            [
-                'key' => 'field_matamko_global_tab',
-                'label' => esc_html__('Global Theme Settings', 'matamko'),
-                'name' => '',
-                'type' => 'tab',
-            ],
-            [
-                'key' => 'field_matamko_accent_color',
-                'label' => esc_html__('Accent Color', 'matamko'),
-                'name' => 'accent_color',
-                'type' => 'color_picker',
-                'default_value' => '#111111',
-            ],
-        ],
-        'location' => [
-            [
-                [
-                    'param' => 'options_page',
-                    'operator' => '==',
-                    'value' => 'matamko-theme-settings',
-                ],
-            ],
-        ],
-        'position' => 'normal',
-        'style' => 'default',
-        'label_placement' => 'top',
-        'instruction_placement' => 'label',
-        'active' => true,
-    ]);
+    return [
+        'site_logo' => isset($input['site_logo']) ? esc_url_raw((string) $input['site_logo']) : '',
+        'company_name' => isset($input['company_name']) ? sanitize_text_field((string) $input['company_name']) : '',
+        'company_address' => isset($input['company_address']) ? sanitize_textarea_field((string) $input['company_address']) : '',
+        'contact_phone' => isset($input['contact_phone']) ? sanitize_text_field((string) $input['contact_phone']) : '',
+        'contact_email' => isset($input['contact_email']) ? sanitize_email((string) $input['contact_email']) : '',
+        'facebook_url' => isset($input['facebook_url']) ? esc_url_raw((string) $input['facebook_url']) : '',
+        'instagram_url' => isset($input['instagram_url']) ? esc_url_raw((string) $input['instagram_url']) : '',
+        'linkedin_url' => isset($input['linkedin_url']) ? esc_url_raw((string) $input['linkedin_url']) : '',
+        'tracking_head_scripts' => isset($input['tracking_head_scripts']) ? wp_kses_post((string) $input['tracking_head_scripts']) : '',
+        'tracking_body_scripts' => isset($input['tracking_body_scripts']) ? wp_kses_post((string) $input['tracking_body_scripts']) : '',
+        'tracking_footer_scripts' => isset($input['tracking_footer_scripts']) ? wp_kses_post((string) $input['tracking_footer_scripts']) : '',
+        'disable_header' => ! empty($input['disable_header']) ? '1' : '',
+        'disable_footer' => ! empty($input['disable_footer']) ? '1' : '',
+        'accent_color' => isset($input['accent_color']) ? sanitize_hex_color((string) $input['accent_color']) : '',
+    ];
+}
+
+function matamko_render_theme_settings_page(): void
+{
+    if (! current_user_can('edit_theme_options')) {
+        wp_die(esc_html__('You do not have permission to access this page.', 'matamko'));
+    }
+
+    ?>
+    <div class="wrap">
+        <h1><?php echo esc_html__('Theme Settings', 'matamko'); ?></h1>
+
+        <form method="post" action="options.php">
+            <?php settings_fields('matamko_theme_settings'); ?>
+
+            <h2><?php echo esc_html__('Logo', 'matamko'); ?></h2>
+            <table class="form-table" role="presentation">
+                <?php matamko_render_text_field('site_logo', esc_html__('Logo URL', 'matamko'), 'url'); ?>
+            </table>
+
+            <h2><?php echo esc_html__('Company Information', 'matamko'); ?></h2>
+            <table class="form-table" role="presentation">
+                <?php matamko_render_text_field('company_name', esc_html__('Company Name', 'matamko')); ?>
+                <?php matamko_render_textarea_field('company_address', esc_html__('Company Address', 'matamko'), 3); ?>
+            </table>
+
+            <h2><?php echo esc_html__('Contact Information', 'matamko'); ?></h2>
+            <table class="form-table" role="presentation">
+                <?php matamko_render_text_field('contact_phone', esc_html__('Phone', 'matamko')); ?>
+                <?php matamko_render_text_field('contact_email', esc_html__('Email', 'matamko'), 'email'); ?>
+            </table>
+
+            <h2><?php echo esc_html__('Social Links', 'matamko'); ?></h2>
+            <table class="form-table" role="presentation">
+                <?php matamko_render_text_field('facebook_url', esc_html__('Facebook URL', 'matamko'), 'url'); ?>
+                <?php matamko_render_text_field('instagram_url', esc_html__('Instagram URL', 'matamko'), 'url'); ?>
+                <?php matamko_render_text_field('linkedin_url', esc_html__('LinkedIn URL', 'matamko'), 'url'); ?>
+            </table>
+
+            <h2><?php echo esc_html__('Tracking Scripts', 'matamko'); ?></h2>
+            <table class="form-table" role="presentation">
+                <?php matamko_render_textarea_field('tracking_head_scripts', esc_html__('Head Scripts', 'matamko'), 8); ?>
+                <?php matamko_render_textarea_field('tracking_body_scripts', esc_html__('Body Scripts', 'matamko'), 8); ?>
+                <?php matamko_render_textarea_field('tracking_footer_scripts', esc_html__('Footer Scripts', 'matamko'), 8); ?>
+            </table>
+
+            <h2><?php echo esc_html__('Header Settings', 'matamko'); ?></h2>
+            <table class="form-table" role="presentation">
+                <?php matamko_render_checkbox_field('disable_header', esc_html__('Disable Header', 'matamko')); ?>
+            </table>
+
+            <h2><?php echo esc_html__('Footer Settings', 'matamko'); ?></h2>
+            <table class="form-table" role="presentation">
+                <?php matamko_render_checkbox_field('disable_footer', esc_html__('Disable Footer', 'matamko')); ?>
+            </table>
+
+            <h2><?php echo esc_html__('Global Theme Settings', 'matamko'); ?></h2>
+            <table class="form-table" role="presentation">
+                <?php matamko_render_text_field('accent_color', esc_html__('Accent Color', 'matamko'), 'text'); ?>
+            </table>
+
+            <?php submit_button(); ?>
+        </form>
+    </div>
+    <?php
+}
+
+function matamko_render_text_field(string $key, string $label, string $type = 'text'): void
+{
+    $value = (string) matamko_get_theme_setting($key);
+    ?>
+    <tr>
+        <th scope="row">
+            <label for="matamko-theme-setting-<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></label>
+        </th>
+        <td>
+            <input
+                id="matamko-theme-setting-<?php echo esc_attr($key); ?>"
+                class="regular-text"
+                type="<?php echo esc_attr($type); ?>"
+                name="matamko_theme_settings[<?php echo esc_attr($key); ?>]"
+                value="<?php echo esc_attr($value); ?>"
+            >
+        </td>
+    </tr>
+    <?php
+}
+
+function matamko_render_textarea_field(string $key, string $label, int $rows = 5): void
+{
+    $value = (string) matamko_get_theme_setting($key);
+    ?>
+    <tr>
+        <th scope="row">
+            <label for="matamko-theme-setting-<?php echo esc_attr($key); ?>"><?php echo esc_html($label); ?></label>
+        </th>
+        <td>
+            <textarea
+                id="matamko-theme-setting-<?php echo esc_attr($key); ?>"
+                class="large-text code"
+                rows="<?php echo esc_attr((string) $rows); ?>"
+                name="matamko_theme_settings[<?php echo esc_attr($key); ?>]"
+            ><?php echo esc_textarea($value); ?></textarea>
+        </td>
+    </tr>
+    <?php
+}
+
+function matamko_render_checkbox_field(string $key, string $label): void
+{
+    $value = (string) matamko_get_theme_setting($key);
+    ?>
+    <tr>
+        <th scope="row"><?php echo esc_html($label); ?></th>
+        <td>
+            <label>
+                <input
+                    type="checkbox"
+                    name="matamko_theme_settings[<?php echo esc_attr($key); ?>]"
+                    value="1"
+                    <?php checked($value, '1'); ?>
+                >
+                <?php echo esc_html__('Enabled', 'matamko'); ?>
+            </label>
+        </td>
+    </tr>
+    <?php
 }

@@ -163,7 +163,7 @@ function matamko_get_active_footer_id(): int
 
 function matamko_render_active_footer(): bool
 {
-    if (function_exists('get_field') && true === (bool) get_field('disable_footer', 'option')) {
+    if (function_exists('matamko_get_theme_setting') && '1' === (string) matamko_get_theme_setting('disable_footer')) {
         return false;
     }
 
