@@ -11,22 +11,22 @@ if (! defined('ABSPATH')) {
     exit;
 }
 
-add_action('init', 'matamko_activate_default_theme', 1);
+add_action('setup_theme', 'matamko_activate_default_theme', 0);
 function matamko_activate_default_theme(): void
 {
-    if (! defined('WP_DEFAULT_THEME') || WP_DEFAULT_THEME !== 'matamko') {
+    if (! defined('WP_DEFAULT_THEME') || ! is_string(WP_DEFAULT_THEME) || WP_DEFAULT_THEME === '') {
         return;
     }
 
-    if (get_stylesheet() === 'matamko') {
+    if (get_stylesheet() === WP_DEFAULT_THEME) {
         return;
     }
 
-    $theme = wp_get_theme('matamko');
+    $theme = wp_get_theme(WP_DEFAULT_THEME);
 
     if (! $theme->exists() || $theme->errors()) {
         return;
     }
 
-    switch_theme('matamko');
+    switch_theme(WP_DEFAULT_THEME);
 }

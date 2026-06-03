@@ -21,7 +21,7 @@ function matamko_register_footer_post_type(): void
             'not_found' => esc_html__('No footers found.', 'matamko'),
         ],
         'public' => true,
-        'publicly_queryable' => false,
+        'publicly_queryable' => true,
         'exclude_from_search' => true,
         'show_ui' => true,
         'show_in_menu' => 'matamko-theme-builder',
@@ -43,6 +43,23 @@ function matamko_add_footer_elementor_support(array $post_types): array
     }
 
     return $post_types;
+}
+
+add_action('elementor/init', 'matamko_enable_footer_elementor_support');
+function matamko_enable_footer_elementor_support(): void
+{
+    add_post_type_support('theme_footer', 'elementor');
+
+    $supported = get_option('elementor_cpt_support', ['page', 'post']);
+
+    if (! is_array($supported)) {
+        $supported = ['page', 'post'];
+    }
+
+    if (! in_array('theme_footer', $supported, true)) {
+        $supported[] = 'theme_footer';
+        update_option('elementor_cpt_support', array_values($supported));
+    }
 }
 
 add_action('acf/include_fields', 'matamko_register_footer_fields');

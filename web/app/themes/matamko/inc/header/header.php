@@ -21,7 +21,7 @@ function matamko_register_header_post_type(): void
             'not_found' => esc_html__('No headers found.', 'matamko'),
         ],
         'public' => true,
-        'publicly_queryable' => false,
+        'publicly_queryable' => true,
         'exclude_from_search' => true,
         'show_ui' => true,
         'show_in_menu' => 'matamko-theme-builder',
@@ -43,6 +43,23 @@ function matamko_add_header_elementor_support(array $post_types): array
     }
 
     return $post_types;
+}
+
+add_action('elementor/init', 'matamko_enable_header_elementor_support');
+function matamko_enable_header_elementor_support(): void
+{
+    add_post_type_support('theme_header', 'elementor');
+
+    $supported = get_option('elementor_cpt_support', ['page', 'post']);
+
+    if (! is_array($supported)) {
+        $supported = ['page', 'post'];
+    }
+
+    if (! in_array('theme_header', $supported, true)) {
+        $supported[] = 'theme_header';
+        update_option('elementor_cpt_support', array_values($supported));
+    }
 }
 
 add_action('acf/include_fields', 'matamko_register_header_fields');
@@ -116,7 +133,6 @@ function matamko_enforce_single_active_header(int $post_id, WP_Post $post, bool 
         update_field('field_matamko_header_is_active', false, (int) $header_id);
     }
 }
-
 function matamko_get_active_header_id(): int
 {
     $headers = get_posts([
