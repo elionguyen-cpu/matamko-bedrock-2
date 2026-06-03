@@ -165,6 +165,61 @@ function matamko_register_theme_settings_page(): void
     );
 }
 
+add_action('admin_enqueue_scripts', 'matamko_enqueue_theme_settings_admin_assets');
+function matamko_enqueue_theme_settings_admin_assets(string $hook_suffix): void
+{
+    if ('toplevel_page_matamko-theme-settings' !== $hook_suffix) {
+        return;
+    }
+
+    wp_enqueue_media();
+
+    wp_add_inline_script(
+        'jquery-core',
+        "
+        jQuery(function ($) {
+            var frame;
+
+            $('.matamko-logo-upload').on('click', function (event) {
+                event.preventDefault();
+
+                if (frame) {
+                    frame.open();
+                    return;
+                }
+
+                frame = wp.media({
+                    title: '" . esc_js(__('Select Logo', 'matamko')) . "',
+                    button: {
+                        text: '" . esc_js(__('Use this logo', 'matamko')) . "'
+                    },
+                    multiple: false
+                });
+
+                frame.on('select', function () {
+                    var attachment = frame.state().get('selection').first().toJSON();
+                    var imageUrl = attachment.sizes && attachment.sizes.medium ? attachment.sizes.medium.url : attachment.url;
+
+                    $('#matamko-theme-setting-site_logo').val(attachment.id);
+                    $('.matamko-logo-preview').html('<img src=\"' + imageUrl + '\" alt=\"\" style=\"max-width: 220px; height: auto; display: block; margin-bottom: 12px;\">');
+                    $('.matamko-logo-remove').show();
+                });
+
+                frame.open();
+            });
+
+            $('.matamko-logo-remove').on('click', function (event) {
+                event.preventDefault();
+
+                $('#matamko-theme-setting-site_logo').val('');
+                $('.matamko-logo-preview').empty();
+                $(this).hide();
+            });
+        });
+        ",
+    );
+}
+
 function matamko_sanitize_theme_settings(mixed $input): array
 {
     if (! is_array($input)) {
@@ -172,7 +227,7 @@ function matamko_sanitize_theme_settings(mixed $input): array
     }
 
     return [
-        'site_logo' => isset($input['site_logo']) ? esc_url_raw((string) $input['site_logo']) : '',
+        'site_logo' => isset($input['site_logo']) ? (string) absint($input['site_logo']) : '',
         'company_name' => isset($input['company_name']) ? sanitize_text_field((string) $input['company_name']) : '',
         'company_address' => isset($input['company_address']) ? sanitize_textarea_field((string) $input['company_address']) : '',
         'contact_phone' => isset($input['contact_phone']) ? sanitize_text_field((string) $input['contact_phone']) : '',
@@ -204,7 +259,7 @@ function matamko_render_theme_settings_page(): void
 
             <h2><?php echo esc_html__('Logo', 'matamko'); ?></h2>
             <table class="form-table" role="presentation">
-                <?php matamko_render_text_field('site_logo', esc_html__('Logo URL', 'matamko'), 'url'); ?>
+                <?php matamko_render_logo_field(); ?>
             </table>
 
             <h2><?php echo esc_html__('Company Information', 'matamko'); ?></h2>
@@ -251,6 +306,42 @@ function matamko_render_theme_settings_page(): void
             <?php submit_button(); ?>
         </form>
     </div>
+    <?php
+}
+
+function matamko_render_logo_field(): void
+{
+    $attachment_id = absint(matamko_get_theme_setting('site_logo'));
+    $image = $attachment_id > 0 ? wp_get_attachment_image($attachment_id, 'medium', false, [
+        'style' => 'max-width: 220px; height: auto; display: block; margin-bottom: 12px;',
+    ]) : '';
+    ?>
+    <tr>
+        <th scope="row">
+            <label for="matamko-theme-setting-site_logo"><?php echo esc_html__('Logo', 'matamko'); ?></label>
+        </th>
+        <td>
+            <div class="matamko-logo-preview">
+                <?php echo $image; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- wp_get_attachment_image returns escaped image HTML.?>
+            </div>
+            <input
+                id="matamko-theme-setting-site_logo"
+                type="hidden"
+                name="matamko_theme_settings[site_logo]"
+                value="<?php echo esc_attr((string) $attachment_id); ?>"
+            >
+            <button type="button" class="button matamko-logo-upload">
+                <?php echo esc_html__('Select Logo', 'matamko'); ?>
+            </button>
+            <button
+                type="button"
+                class="button matamko-logo-remove"
+                style="<?php echo $attachment_id > 0 ? '' : 'display: none;'; ?>"
+            >
+                <?php echo esc_html__('Remove Logo', 'matamko'); ?>
+            </button>
+        </td>
+    </tr>
     <?php
 }
 
