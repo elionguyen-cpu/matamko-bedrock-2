@@ -163,22 +163,24 @@ function matamko_get_active_header_id(): int
 function matamko_render_active_header(): bool
 {
     if (function_exists('matamko_get_theme_setting') && '1' === (string) matamko_get_theme_setting('disable_header')) {
-        return false;
+        return true;
     }
 
     $header_id = matamko_get_active_header_id();
 
-    if ($header_id <= 0 || ! did_action('elementor/loaded') || ! class_exists('\Elementor\Plugin')) {
+    if ($header_id <= 0) {
         return false;
+    }
+
+    if (! did_action('elementor/loaded') || ! class_exists('\Elementor\Plugin')) {
+        return true;
     }
 
     $content = \Elementor\Plugin::$instance->frontend->get_builder_content_for_display($header_id);
 
-    if (! is_string($content) || '' === trim($content)) {
-        return false;
+    if (is_string($content) && '' !== trim($content)) {
+        echo $content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Elementor returns prepared frontend HTML.
     }
-
-    echo $content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Elementor returns prepared frontend HTML.
 
     return true;
 }
