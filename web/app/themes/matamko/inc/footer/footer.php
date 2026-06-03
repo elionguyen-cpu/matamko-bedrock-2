@@ -62,6 +62,18 @@ function matamko_enable_footer_elementor_support(): void
     }
 }
 
+add_filter('single_template', 'matamko_filter_footer_single_template');
+function matamko_filter_footer_single_template(string $template): string
+{
+    if (! is_singular('theme_footer')) {
+        return $template;
+    }
+
+    $candidate = get_template_directory() . '/template-parts/blank-builder-template.php';
+
+    return file_exists($candidate) ? $candidate : $template;
+}
+
 add_action('acf/include_fields', 'matamko_register_footer_fields');
 function matamko_register_footer_fields(): void
 {
@@ -157,7 +169,7 @@ function matamko_render_active_footer(): bool
 
     $footer_id = matamko_get_active_footer_id();
 
-    if ($footer_id <= 0 || ! did_action('elementor/loaded')) {
+    if ($footer_id <= 0 || ! did_action('elementor/loaded') || ! class_exists('\Elementor\Plugin')) {
         return false;
     }
 
